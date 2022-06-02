@@ -1,5 +1,8 @@
 # retelimit by leaky bucket
 
+## Install
+> go get -u github.com/nelsonken/ratelimit-go
+
 ## Ability
 
 ```go
@@ -43,7 +46,7 @@ func main() {
 		fmt.Println("allowed")
 	}else {
 		fmt.Println("deny")
-    }
+	}
 
 	if limiter.SpinTake(1*time.Second) {
 		fmt.Println("allowed")
@@ -59,7 +62,8 @@ package main
 
 import (
 	"net/http"
-
+	"time"
+	"github.com/nelsonken/ratelimit-go"
 	"github.com/labstack/echo/v4"
 )
 
@@ -68,7 +72,7 @@ func main() {
 
 	// 10 qps
 	m := ratelimit.NewRateLimitMiddleware(10, 2, time.Second)
-    e.Use(m)
+	e.Use(m)
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
 	})
