@@ -51,31 +51,32 @@ type atomicLimiter struct {
 }
 
 func (l *atomicLimiter) SpinTake(maxSpin time.Duration) bool {
-	out := make(chan struct{})
+	out := make(chan bool)
 	go func() {
-		l.spinTakePointer()
-		out <- struct{}{}
+		out <- l.spinTakePointer()
 	}()
 
 	select {
 	case <-time.After(maxSpin):
 		return false
-	case <-out:
-		return true
+	case t := <-out:
+		return t
 	}
 }
 
 // spinTakePointer take with spin
-func (l *atomicLimiter) spinTakePointer() time.Time {
+func (l *atomicLimiter) spinTakePointer() bool {
 	var (
 		newState state
 		taken    bool
 		interval time.Duration
 	)
 
-	for !taken {
-		now := time.Now()
+	maxTry := 5
 
+	for !taken && maxTry > 0 {
+		maxTry--
+		now := time.Now()
 		previousStatePointer := atomic.LoadPointer(&l.state)
 		oldState := (*state)(previousStatePointer)
 
@@ -107,8 +108,12 @@ func (l *atomicLimiter) spinTakePointer() time.Time {
 		}
 		taken = atomic.CompareAndSwapPointer(&l.state, previousStatePointer, unsafe.Pointer(&newState))
 	}
-	time.Sleep(interval)
-	return newState.last
+
+	if taken {
+		time.Sleep(interval)
+	}
+
+	return taken
 }
 
 // Take check if request can bee pass return true
